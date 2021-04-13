@@ -34,3 +34,6 @@ Important to know are the different used directives in the yaml-file
 **write_files** creates a config file for the NFS server
 
 **runcmd** does various steps after the deployment
+
+## VM sizing
+This script will deploy a very small VM. Feel free to change disk and VM size according to your requirements
