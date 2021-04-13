@@ -1,0 +1,36 @@
+#cloud-config
+disk_setup:
+  /dev/disk/azure/scsi1/lun0:
+    table_type: gpt
+    layout: True
+    overwrite: True
+
+fs_setup:
+  - device: /dev/disk/azure/scsi1/lun0
+    partition: 1
+    filesystem: ext4
+
+mounts:
+  - [
+      "/dev/disk/azure/scsi1/lun0-part1",
+      "/datadrive",
+      auto,
+      "defaults,noexec,nofail",
+    ]
+
+package_upgrade: true
+packages:
+  - nfs-kernel-server
+
+write_files:
+  - path: /etc/exports
+    content: |
+      /datadrive  172.17.0.0/24(rw,async,no_subtree_check)
+
+runcmd:
+  - sudo chown -R nobody:nogroup /datadrive/
+  - sudo chmod 777 /datadrive/
+  - exportfs -ra
+  - systemctl restart nfs-kernel-server
+
+

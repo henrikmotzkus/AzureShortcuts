@@ -1,0 +1,71 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "westeurope"
+        },
+        "networkInterfaceName": {
+            "value": "nfsserver890"
+        },
+        "subnetName": {
+            "value": "default"
+        },
+        "virtualNetworkId": {
+            "value": "/subscriptions/2abc2ec1-2238-430d-bf52-40cb7dc8b652/resourceGroups/network/providers/Microsoft.Network/virtualNetworks/vnettest1"
+        },
+        "virtualMachineName": {
+            "value": "nfsserver"
+        },
+        "virtualMachineComputerName": {
+            "value": "nfsserver"
+        },
+        "virtualMachineRG": {
+            "value": "ECE_NFS"
+        },
+        "osDiskType": {
+            "value": "Premium_LRS"
+        },
+        "dataDisks": {
+            "value": [
+                {
+                    "lun": 0,
+                    "createOption": "attach",
+                    "caching": "None",
+                    "writeAcceleratorEnabled": false,
+                    "id": null,
+                    "name": "nfsserver_DataDisk_0",
+                    "storageAccountType": null,
+                    "diskSizeGB": null,
+                    "diskEncryptionSet": null
+                }
+            ]
+        },
+        "dataDiskResources": {
+            "value": [
+                {
+                    "name": "nfsserver_DataDisk_0",
+                    "sku": "StandardSSD_LRS",
+                    "properties": {
+                        "diskSizeGB": 4,
+                        "creationData": {
+                            "createOption": "empty"
+                        }
+                    }
+                }
+            ]
+        },
+        "virtualMachineSize": {
+            "value": "Standard_B2ms"
+        },
+        "adminUsername": {
+            "value": "adminlocal"
+        },
+        "adminPublicKey": {
+            "value": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDAZX53q2r7Y3/UaWd2oWtjP8wBnO4I46AfmJXZ/XhKbqNMKrnkHawVaTCid2wA7w2XXvYKUgNi6kDzp5AsRLxEmGoP0nvc8zTA59vVTsuiOT48trcB4lpk2VQ6lLbvazXwg2EKcskJGtxPstvinj4OFDs7iVxa7/BAMBJ+0DoLMYk3hV9Ipi7zwHjERpzwQE8HMQ9Sv+SqFLybBaIEtqPJT2e9y/yUo6i070eBzbDOXzpIwYfPc45nq8zyrPT/rdPj03FJ01UwwcKlfHm81yY56SUMRf2hen6yXm9OyHFeqTK6A3UpU2EFSfkD5Y/kDtMZjsNLmkLfdq5lUrKNatvH"
+        },
+        "zone": {
+            "value": "1"
+        }
+    }
+}
