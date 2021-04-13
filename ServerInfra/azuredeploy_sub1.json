@@ -1,0 +1,359 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vnetadressprefix":{
+            "type":"string"
+        },
+        "subnetadressprefix":{
+            "type":"string"
+        },
+        "bastionsubnetadressprefix":{
+            "type":"string"
+        },
+        "location": {
+            "defaultValue":"westeurope",
+            "type": "string"
+        },
+        "suffix": {
+            "type":"string"
+        },
+        "adminpassword": {
+            "type": "securestring"
+        }
+    },
+    "variables": {
+        "vnet_name":"[concat('vnet_sofie_',parameters('suffix'))]",
+        "resourcegroup_name":"[concat('rg_sofie_',parameters('suffix'))]",
+        "databaseName":"[concat('sql_db_',parameters('suffix'))]",
+        "servername":"[concat('sqlsrv',parameters('suffix'))]",
+        "private_endpointname":"[concat('pe_',parameters('suffix'))]",
+        "vmname":"[concat('vm',parameters('suffix'))]",
+        "nicname":"[concat('nic_',parameters('suffix'))]",
+        "subscriptionId": "[subscription().subscriptionId]",
+        "uniqueStorage": "[uniqueString(variables('subscriptionId'), variables('resourcegroup_name'), parameters('location'))]",
+        "storageName": "[tolower(concat('sqlva', variables('uniqueStorage')))]",
+        "uniqueRoleGuid": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), variables('storageBlobContributor'), resourceId('Microsoft.Sql/servers', variables('servername')))]",
+        "StorageBlobContributor": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+        "enableVA":"[false()]",
+        "useVAManagedIdentity":"[false()]",
+        "administratorLogin":"adminlocal",
+        "privatednszonevm":"[concat(parameters('suffix'),'.local')]",
+        "privatednszonesql": "[concat('privatelink', environment().suffixes.sqlServerHostname)]"
+    },
+    "resources": [
+       
+        {
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2020-01-01",
+            "name": "[variables('privatednszonevm')]",
+            "location": "global",
+            "dependsOn": [
+                "[resourceid('Microsoft.Network/virtualNetworks',variables('vnet_name'))]"
+            ],
+            "properties": "",
+            "tags": {}
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2018-09-01",
+            "name": "[concat(variables('privatednszonevm'), '/tovnet')]",
+            "location": "global",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('privatednszonevm'))]"
+            ],
+            "properties": {
+                "registrationEnabled": true,
+                "virtualNetwork": {
+                    "id": "[resourceid('Microsoft.Network/virtualNetworks',variables('vnet_name'))]"
+                }
+            }
+        },
+         {
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2020-01-01",
+            "name": "[variables('privatednszonesql')]",
+            "location": "global",
+            "dependsOn": [
+                "[resourceid('Microsoft.Network/virtualNetworks',variables('vnet_name'))]"
+            ],
+            "properties": "",
+            "tags": {}
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2018-09-01",
+            "name": "[concat(variables('privatednszonesql'), '/tovnet')]",
+            "location": "global",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('privatednszonesql'))]"
+            ],
+            "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                    "id": "[resourceid('Microsoft.Network/virtualNetworks',variables('vnet_name'))]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2020-05-01",
+            "name": "[variables('vnet_name')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[parameters('vnetadressprefix')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "default",
+                        "properties": {
+                            "addressPrefix": "[parameters('subnetadressprefix')]",
+                            "serviceEndpoints": [],
+                            "delegations": [],
+                            "privateEndpointNetworkPolicies": "Disabled",
+                            "privateLinkServiceNetworkPolicies": "Disabled"
+                        }
+                    },
+                    {
+                        "name": "AzureBastionSubnet",
+                        "properties": {
+                            "addressPrefix": "[parameters('bastionsubnetadressprefix')]",
+                            "serviceEndpoints": [],
+                            "delegations": [],
+                            "privateEndpointNetworkPolicies": "Disabled",
+                            "privateLinkServiceNetworkPolicies": "Disabled"
+                        }
+                    }
+                ],
+                "virtualNetworkPeerings": [],
+                "enableDdosProtection": false,
+                "enableVmProtection": false
+            }
+        },
+        {
+            "condition": "[variables('enableVA')]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-04-01",
+            "name": "[variables('storageName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "kind": "StorageV2",
+            "resources": [
+                {
+                    "condition": "[variables('useVAManagedIdentity')]",
+                    "type": "Microsoft.Storage/storageAccounts/providers/roleAssignments",
+                    "apiVersion": "2018-09-01-preview",
+                    "name": "[concat(variables('storageName'), '/Microsoft.Authorization/', variables('uniqueRoleGuid') )]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Sql/servers', variables('servername'))]",
+                        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+                    ],
+                    "properties": {
+                        "roleDefinitionId": "[variables('StorageBlobContributor')]",
+                        "principalId": "[reference(resourceId('Microsoft.Sql/servers', variables('servername')), '2018-06-01-preview', 'Full').identity.principalId]",
+                        "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+                        "principalType": "ServicePrincipal"
+                    }
+                }
+            ]
+        },
+        {
+            "apiVersion": "2015-05-01-preview",
+            "type": "Microsoft.Sql/servers",
+            "location": "[parameters('location')]",
+            "name": "[variables('servername')]",
+            "properties": {
+                "administratorLogin": "[variables('administratorLogin')]",
+                "administratorLoginPassword": "[parameters('adminpassword')]",
+                "version": "12.0"
+            },
+            "dependsOn":[
+                "[resourceId('Microsoft.Network/virtualNetworks',variables('vnet_name'))]"
+            ],
+            "identity": "[if(and(variables('enableVA'),variables('useVAManagedIdentity')), json('{\"type\":\"SystemAssigned\"}'), json('null'))]",
+            "resources": [
+                {
+                    "apiVersion": "2018-06-01-preview",
+                    "dependsOn": [
+                        "[concat('Microsoft.Sql/servers/', variables('servername'))]"
+                    ],
+                    "location": "[parameters('location')]",
+                    "name": "[variables('databaseName')]",
+                    "properties": {
+                        "collation": "SQL_Latin1_General_CP1_CI_AS",
+                        "maxSizeBytes": "34359738368",
+                        "sampleName": "",
+                        "zoneRedundant": "[false()]",
+                        "licenseType": "LicenseIncluded",
+                        "readScale": "Disabled",
+                        "readReplicaCount": "0"
+                    },
+                    "sku": {
+                        "name": "GP_Gen5_2",
+                        "tier": "GeneralPurpose"
+                    },
+                    "type": "databases"
+                }
+            ]
+        },
+        {
+            "name": "[variables('nicname')]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2018-10-01",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('vnet_name'))]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "subnet": {
+                                "id": "[resourceid('Microsoft.Network/virtualNetworks/subnets', variables('vnet_name'), 'default')]"
+                            },
+                            "privateIPAllocationMethod": "Dynamic"
+                        }
+                    }
+                ],
+                "enableAcceleratedNetworking": "[true()]"
+            }
+        },
+        {
+            "name": "[variables('vmname')]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2020-06-01",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Network/networkInterfaces/', variables('nicname'))]"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "Standard_D4s_v3"
+                },
+                "storageProfile": {
+                    "osDisk": {
+                        "createOption": "fromImage",
+                        "managedDisk": {
+                            "storageAccountType": "Premium_LRS"
+                        }
+                    },
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "2016-Datacenter",
+                        "version": "latest"
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicname'))]"
+                        }
+                    ]
+                },
+                "osProfile": {
+                    "computerName": "[variables('vmname')]",
+                    "adminUsername": "[variables('administratorLogin')]",
+                    "adminPassword": "[parameters('adminpassword')]",
+                    "windowsConfiguration": {
+                        "enableAutomaticUpdates": true,
+                        "provisionVmAgent": true,
+                        "patchSettings": {
+                            "patchMode": "AutomaticByOS"
+                        }
+                    }
+                }
+            },
+            "zones": [
+                "1"
+            ]
+        },
+        {
+            "location": "[parameters('location')]",
+            "name": "[variables('private_endpointname')]",
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-03-01",
+            "properties": {
+                "subnet": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets',variables('vnet_name'), 'default')]"
+                },
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[variables('private_endpointname')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.Sql/servers', variables('servername'))]",
+                            "groupIds": ["sqlServer"]
+                        }
+                    }
+                ]
+            },
+            "tags": {},
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('vnet_name'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+            "apiVersion": "2020-05-01",
+            "name": "[concat('pe_',parameters('suffix'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateEndpoints', variables('private_endpointname'))]",
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('privatednszonesql'))]"
+            ],
+            "properties": {
+                "privateDnsZoneConfigs": [
+                    {
+                        "name": "privatelink_database_windows_net",
+                        "properties": {
+                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('privatednszonesql'))]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "apiVersion": "2019-02-01",
+            "type": "Microsoft.Network/publicIpAddresses",
+            "name": "[concat('pubip_',parameters('suffix'))]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Standard"
+            },
+            "properties": {
+                "publicIPAllocationMethod": "Static"
+            },
+            "tags": {}
+        },
+        {
+            "apiVersion": "2018-10-01",
+            "type": "Microsoft.Network/bastionHosts",
+            "name": "[concat('bastion_',parameters('suffix'))]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId(variables('resourcegroup_name'), 'Microsoft.Network/publicIpAddresses', concat('pubip_',parameters('suffix')))]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "IpConf",
+                        "properties": {
+                            "subnet": {
+                                "id": "[resourceid(variables('resourcegroup_name'),'Microsoft.Network/virtualNetworks/subnets', variables('vnet_name'), 'AzureBastionSubnet')]"
+                            },
+                            "publicIPAddress": {
+                                "id": "[resourceId(variables('resourcegroup_name'), 'Microsoft.Network/publicIpAddresses', concat('pubip_',parameters('suffix')))]"
+                            }
+                        }
+                    }
+                ]
+            },
+            "tags": {}
+        }
+    ]
+}
