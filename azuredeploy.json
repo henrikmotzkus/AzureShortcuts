@@ -46,9 +46,10 @@
         }
     },
     "variables": {
+        "_artifactsLocation":"https://raw.githubusercontent.com/henrikmotzkus/NFS/main/",
         "vnetId": "[parameters('virtualNetworkId')]",
         "subnetRef": "[concat(variables('vnetId'), '/subnets/', parameters('subnetName'))]",
-        "customData": "[concat('#include\n',uri(parameters('_artifactsLocation'),'Linux-Disk-Setup.yaml'))]"
+        "customData": "[concat('#include\n',uri(variables('_artifactsLocation'),'Linux-Disk-Setup.yaml'))]"
         
     },
     "resources": [
