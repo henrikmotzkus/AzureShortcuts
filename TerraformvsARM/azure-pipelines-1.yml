@@ -1,0 +1,78 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages :
+  - stage: validate
+    jobs:
+    - job: validate
+      continueOnError: false
+      steps:
+      - task: CopyFiles@2
+        inputs:
+          SourceFolder: 'terraform'
+          Contents: '**'
+          TargetFolder: 'terraform'
+      - task: TerraformInstaller@0
+        displayName: 'install'
+        inputs:
+          terraformVersion: '0.13.3'
+      - task: TerraformTaskV1@0
+        displayName: 'init'
+        inputs:
+          provider: 'azurerm'
+          command: 'init'
+          backendServiceArm: 'Microsoft Azure Internal Consumption(2abc2ec1-2238-430d-bf52-40cb7dc8b652)'
+          backendAzureRmResourceGroupName: 'ARMvsTerraform_State'
+          backendAzureRmStorageAccountName: 'kopicloudtfstate14259'
+          backendAzureRmContainerName: 'tfstate'
+          backendAzureRmKey: 'terraform.tfstate'
+      - task: TerraformTaskV1@0
+        displayName: 'validate'
+        inputs:
+          provider: 'azurerm'
+          command: 'validate'
+  - stage: deploy
+    jobs:
+    - deployment: deploy_terraform
+      continueOnError: false
+      environment: 'dev'
+      strategy:
+       runOnce:
+         deploy:
+            steps:
+              - checkout: self
+              - task: TerraformInstaller@0
+                displayName: 'install'
+                inputs:
+                  terraformVersion: '0.13.3'
+              - task: CopyFiles@2
+                inputs:
+                  SourceFolder: 'terraform'
+                  Contents: '**'
+                  TargetFolder: '$(System.DefaultWorkingDirectory)'
+              - task: TerraformTaskV1@0
+                displayName: 'init'
+                inputs:
+                  provider: 'azurerm'
+                  command: 'init'
+                  backendServiceArm: 'Microsoft Azure Internal Consumption(2abc2ec1-2238-430d-bf52-40cb7dc8b652)'
+                  backendAzureRmResourceGroupName: 'ARMvsTerraform_State'
+                  backendAzureRmStorageAccountName: 'kopicloudtfstate14259'
+                  backendAzureRmContainerName: 'tfstate'
+                  backendAzureRmKey: 'terraform.tfstate'
+              - task: TerraformTaskV1@0
+                displayName: 'plan'
+                inputs:
+                  provider: 'azurerm'
+                  command: 'plan'
+                  environmentServiceNameAzureRM: 'Microsoft Azure Internal Consumption(2abc2ec1-2238-430d-bf52-40cb7dc8b652)'
+              - task: TerraformTaskV1@0
+                displayName: 'apply'
+                inputs:
+                  provider: 'azurerm'
+                  command: 'apply'
+                  environmentServiceNameAzureRM: 'Microsoft Azure Internal Consumption(2abc2ec1-2238-430d-bf52-40cb7dc8b652)'
+

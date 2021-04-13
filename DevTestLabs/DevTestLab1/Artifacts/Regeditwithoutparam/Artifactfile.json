@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Azure/azure-devtestlab/master/schemas/2016-11-28/dtlArtifacts.json",
+  "title": "Sets registry key unattended",
+  "description": "Mandatory registry keys for operations without parameters",
+  "publisher": "BSS",
+  "tags": [
+    "Windows"
+  ],
+  "iconUri": "",
+  "targetOsType": "Windows",
+  "parameters": {
+    
+  },
+  "runCommand": {
+    "commandToExecute": "[concat('powershell.exe -ExecutionPolicy bypass \"& ./artifact.ps1', '\"')]"
+  } 
+}

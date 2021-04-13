@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Azure/azure-devtestlab/master/schemas/2016-11-28/dtlArtifacts.json",
+  "title": "Sets registry key",
+  "description": "Mandatory registry keys for operations",
+  "publisher": "BSS",
+  "tags": [
+    "Windows"
+  ],
+  "iconUri": "",
+  "targetOsType": "Windows",
+  "parameters": {
+    "Path": {
+      "type": "string",
+      "displayName": "Path",
+      "description": "The path to the RegKey."
+      
+    },
+    "Name": {
+      "type": "string",
+      "displayName": "Name",
+      "description": "The name of the new item."
+     
+    },
+    "Propertyname": {
+      "type": "string",
+      "displayName": "Propertyname",
+      "description": "The name of the new property."
+     
+    },
+    "Value": {
+      "type": "string",
+      "displayName": "Value",
+      "description": "The value for the new key. "
+      
+    } 
+  },
+  "runCommand": {
+    "commandToExecute": "[concat('powershell.exe -ExecutionPolicy bypass \"& ./artifact.ps1', ' -Path ''', parameters('Path'), ''' -Name ''', parameters('Name'), ''' -Propertyname ''', parameters('Propertyname'),''' -Value ''', parameters('Value'), '''\"')]"
+  } 
+}

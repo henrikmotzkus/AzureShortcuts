@@ -1,0 +1,17 @@
+{
+    "$schema": "https://raw.githubusercontent.com/Azure/azure-devtestlab/master/schemas/2016-11-28/dtlArtifacts.json",
+    "title": "Deinstalling SQL Server 2019",
+    "description": "Deinstalls SQL Server 2019 sillenty from VM",
+    "publisher": "BSS",
+    "tags": [
+        "Windows"
+    ],
+    "iconUri": "",
+    "targetOsType": "Windows",
+    "parameters": {
+         
+    },    
+    "runCommand": {
+        "commandToExecute": "[concat('powershell.exe -ExecutionPolicy bypass \"& ./artifact.ps1', '\"')]"
+    }
+}

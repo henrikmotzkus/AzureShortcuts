@@ -1,0 +1,28 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "name": {
+            "value": "TeamBlack"
+        },
+        "vaultname": {
+            "value": "TeamBlackVault"
+        },
+        "DevTestLabRepo": {
+            "value": "https://dev.azure.com/hemotzku/_git/Beiersdorf_DevTestLab"
+        },
+        "ArtifactsfolderPath": {
+            "value": "/DevTestLab1/Artifacts"
+        },
+        "ArmTemplatefolderPath": {
+            "value": "/DevTestLab1/ArmTemplates"
+        },
+        "VNETaddressspace": {
+            "value": "10.0.0.0/24"
+        },
+        "Subnetaddressspace": {
+            "value": "10.0.0.0/25"
+        }
+      
+    }
+  }

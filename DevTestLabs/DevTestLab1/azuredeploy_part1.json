@@ -1,0 +1,484 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "name": {
+            "defaultValue": "",
+            "type": "String"
+        },
+        "vaultname": {
+            "defaultValue": "",
+            "type": "String"
+        },
+        "DevTestLabRepo": {
+            "defaultValue": "https://dev.azure.com/hemotzku/_git/Beiersdorf_DevTestLab",
+            "type": "String",
+            "metadata": {
+                "description": "Url des externen Repos für dieses DTL"
+            }
+        },
+        "ArtifactsfolderPath": {
+            "defaultValue": "/DevTestLab1/Artifacts",
+            "type": "string",
+            "metadata": {
+                "description":"Folder der Artifacts im Repo "
+            }
+
+        },
+        "ArmTemplatefolderPath": {
+            "defaultValue": "/DevTestLab1/ArmTemplates",
+            "type": "string",
+            "metadata": {
+                "description":"Folder der ARM Templates im Repo "
+            }
+        },
+        "VNETaddressspace": {
+            "defaultValue": "10.36.18.0/24",
+            "type": "string",
+            "metadata": {
+                "description":"Address space of the VNET "
+            }
+        },
+        "Subnetaddressspace": {
+            "defaultValue": "10.36.18.0/24",
+            "type": "string",
+            "metadata": {
+                "description":"Address space of the subnet for VMs"
+            }
+        },
+        "imageReferences": {
+            "type": "array",
+            "defaultValue": [
+                {
+                    "offer": "dsvm-win-2019",
+                    "publisher": "microsoft-dsvm",
+                    "sku": "server-2019-g2",
+                    "ostype": "Windows",
+                    "version": "latest"
+                    
+                },
+                {
+                    "offer": "dsvm-win-2019",
+                    "publisher": "microsoft-dsvm",
+                    "sku": "server-2019",
+                    "ostype": "Windows",
+                    "version": "latest"
+                    
+                },
+                {
+                    "offer": "WindowsServer",
+                    "publisher": "MicrosoftWindowsServer",
+                    "sku": "2019-Datacenter",
+                    "ostype": "Windows",
+                    "version": "latest"
+                    
+                }
+            ]
+        }
+    },
+        "variables": {
+        "thresholdName": "threshold",
+        "copy": [
+            {
+                "name": "[variables('thresholdName')]",
+                "count": "[length(parameters('imageReferences'))]",
+                "input": "[string(parameters('imageReferences')[copyIndex(variables('thresholdName'))])]"
+            }
+        ],
+        "thresholdValue": "[string(variables(variables('thresholdName')))]"
+    },
+    "resources": [
+        {
+            "type":"Microsoft.Network/virtualNetworks",
+            "apiVersion":"2019-11-01",
+            "name":"[parameters('name')]",
+            "location":"[resourceGroup().location]",
+            "properties":{
+                "addressSpace":{
+                    "addressPrefixes":[
+                        "[parameters('VNETaddressspace')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name":"[parameters('name')]",
+                        "properties":{
+                            "addressPrefix":"[parameters('Subnetaddressspace')]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.DevTestLab/labs",
+            "apiVersion": "2018-10-15-preview",
+            "name": "[parameters('name')]",
+            "location": "[resourceGroup().location]",
+            "tags": {},
+            "dependsOn" :[
+            ],  
+            "properties": {
+                "labStorageType": "Premium",
+                "mandatoryArtifactsResourceIdsLinux": [
+                ],
+                "mandatoryArtifactsResourceIdsWindows": [
+                ],
+                
+                "premiumDataDisks": "",
+                "environmentPermission": "",
+                "announcement": {
+                    "title": "Hallo Welt",
+                    "markdown": "<h1>Hallo Welt</h1>",
+                    "enabled": true,
+                    "expirationDate": "",
+                    "expired": false
+                },
+                "support": {
+                    "enabled": true,
+                    "markdown": "<h1>Support</h1>"
+                },
+                "extendedProperties": {}
+            },
+            "resources": [
+                {
+                    "type": "schedules",
+                    "apiVersion": "2018-10-15-preview",
+                    "name": "LabVmsShutdown",
+                    "location": "[resourceGroup().location]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.DevTestLab/labs', parameters('name'))]"
+                    ],
+                    "properties": {
+                        "status": "Enabled",
+                        "timeZoneId": "Central Europe Standard Time",
+                        "dailyRecurrence": {
+                            "time": "1900"
+                        },
+                        "taskType": "LabVmsShutdownTask",
+                        "notificationSettings": {
+                            "status": "Disabled",
+                            "timeInMinutes": 30
+                        }
+                    }
+                },
+                {
+                    "type": "virtualNetworks",
+                    "apiVersion": "2018-10-15-preview",
+                    "name": "[concat(parameters('name'))]",
+                    "location": "[resourceGroup().location]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.DevTestLab/labs', parameters('name'))]"
+                    ],
+                    "properties": {
+                        "externalProviderResourceId":"[resourceId('Microsoft.Network/virtualNetworks', parameters('name'))]",
+                        "subnetOverrides": [
+                            {
+                                "name": "[concat(parameters('name'))]",
+                                "resourceId":"[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('name'), parameters('name') )]",
+                                "useInVmCreationPermission": "Allow",
+                                "usePublicIpAddressPermission": "Deny"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "type": "microsoft.devtestlab/labs/formulas",
+                    "apiVersion": "2018-09-15",
+                    "name": "[concat(parameters('name'), '/datasciencevm1')]",
+                    "dependsOn": [
+                        "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+                    ],
+                    "properties": {
+                        "description": "DatScienceVM1",
+                        "author": "hemotzku@microsoft.com",
+                        "osType": "Windows",
+                        "formulaContent": {
+                            "properties": {
+                                "size": "Standard_D2_v2",
+                                "userName": "adminlocal",
+                                "password": "Password123!",
+                                "isAuthenticationWithSshKey": false,
+                                "labSubnetName": "[concat(parameters('name'), 'Subnet')]",
+                                "labVirtualNetworkId": "[resourceId('Microsoft.Network/virtualNetworks', parameters('name'))]",
+                                "disallowPublicIpAddress": true,
+                                "artifacts": [
+                                    {
+                                        "artifactId": "/artifactsources/privaterepo/artifacts/windows-7zip",
+                                        "parameters": []
+                                    }
+                                ],
+                                "galleryImageReference": {
+                                    "offer": "Windows-10",
+                                    "publisher": "MicrosoftWindowsDesktop",
+                                    "sku": "rs5-enterprise",
+                                    "osType": "Windows",
+                                    "version": "latest"
+                                },
+                                "allowClaim": true,
+                                "storageType": "StandardSSD"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "[concat(parameters('name'), '/', 'default/MaxVmsAllowedPerUser')]",
+                    "type": "Microsoft.DevTestLab/labs/policysets/policies",
+                    "apiVersion": "2018-09-15",
+                    "location": "westeurope",
+                    "dependsOn": [
+                        "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+                    ],
+                    "tags": {},
+                    "properties": {
+                        "description": "Limit the number of virtual machines per user",
+                        "status": "Enabled",
+                        "factName": "UserOwnedLabVmCount",
+                        "threshold": "2",
+                        "evaluatorType": "MaxValuePolicy"
+                    }
+                },
+                {
+                    "apiVersion": "2018-10-15-preview",
+                    "name": "[concat(parameters('name'), '/', 'default/ScheduleEditPermission')]",
+                    "type": "Microsoft.DevTestLab/labs/policysets/policies",
+                    "location": "[resourceGroup().location]",
+                    "dependsOn": [
+                        "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+                    ],
+                    "properties": {
+                        "description": "Set the level of control that lab users have over their individual VM shutdown schedules.",
+                        "factName": "ScheduleEditPermission",
+                        "threshold": "[[\"Modifiy\"]",
+                        "evaluatorType": "AllowedValuesPolicy",
+                        "status": "Enabled"
+                    }
+                },
+                {
+                    "apiVersion": "2018-10-15-preview",
+                    "name": "[concat(parameters('name'), '/', 'default/MaxPremiumVmsAllowedPerUser')]",
+                    "type": "Microsoft.DevTestLab/labs/policysets/policies",
+                    "location": "[resourceGroup().location]",
+                    "dependsOn": [
+                        "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+                    ],
+                    "properties": {
+                        "description": "Limit the number of premium virtual machines per user",
+                        "factName": "UserOwnedLabPremiumVmCount",
+                        "threshold": "2",
+                        "evaluatorType": "MaxValuePolicy",
+                        "status": "Enabled"
+                    }
+                },
+                {
+                    "apiVersion": "2018-10-15-preview",
+                    "name": "[concat(parameters('name'), '/', 'default/MaxVmsAllowedPerLab')]",
+                    "type": "Microsoft.DevTestLab/labs/policysets/policies",
+                    "location": "[resourceGroup().location]",
+                    "dependsOn": [
+                        "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+                    ],
+                    "properties": {
+                        "description": "Limit the total number of virtual machines in the lab",
+                        "factName": "LabVmCount",
+                        "threshold": "50",
+                        "evaluatorType": "MaxValuePolicy",
+                        "status": "Enabled"
+                    }
+                },
+                {
+                    "apiVersion": "2018-10-15-preview",
+                    "name": "[concat(parameters('name'), '/', 'default/MaxPremiumVmsAllowedPerLab')]",
+                    "type": "Microsoft.DevTestLab/labs/policysets/policies",
+                    "location": "[resourceGroup().location]",
+                    "dependsOn": [
+                        "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+                    ],
+                    "properties": {
+                        "description": "Limit the total number of premium virtual machines in the lab",
+                        "factName": "LabPremiumVmCount",
+                        "threshold": "50",
+                        "evaluatorType": "MaxValuePolicy",
+                        "status": "Enabled"
+                    }
+                },
+                {
+                    "apiVersion": "2018-10-15-preview",
+                    "name": "[concat(parameters('name'), '/', 'default/AllowedVmSizesInLab')]",
+                    "type": "Microsoft.DevTestLab/labs/policysets/policies",
+                    "location": "[resourceGroup().location]",
+                    "dependsOn": [
+                        "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+                    ],
+                    "properties": {
+                        "description": "Limit the allowed virtual machine sizes in the lab",
+                        "factName": "LabVmSize",
+                        "threshold": "[[\"Standard_A5\", \"Standard_A3\", \"Standard_A2\"]",
+                        "evaluatorType": "AllowedValuesPolicy",
+                        "status": "Enabled"
+                    }
+                },
+                {
+                    "apiVersion": "2018-10-15-preview",
+                    "name": "[concat(parameters('name'), '/', 'default/GalleryImage')]",
+                    "type": "Microsoft.DevTestLab/labs/policySets/policies",
+                    "dependsOn": [
+                        "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+                    ],
+                    "properties": {
+                        "description": "Limit the type of gallery images that can be used",
+                        "factName": "GalleryImage",
+                        "threshold": "[variables('thresholdValue')]",
+                        "evaluatorType": "AllowedValuesPolicy",
+                        "status": "Enabled"
+                    }
+                },
+                {
+                    "apiVersion": "2018-10-15-preview",
+                    "name": "[concat(parameters('name'), '/', 'default/EnvironmentTemplate')]",
+                    "type": "Microsoft.DevTestLab/labs/policySets/policies",
+                    "dependsOn": [
+                        "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+                    ],
+                    "properties": {
+                        "description": "Limit the type of environment templates that can be used",
+                        "factName": "EnvironmentTemplate",
+                        "threshold": "[['{\"armTemplateName\":\"WebAppMySQL\", \"repositorySourceName\":\"DevTestLab\"}']",
+                        "evaluatorType": "AllowedValuesPolicy",
+                        "status": "Enabled"
+                    }
+                },
+                {
+                "apiVersion": "2018-10-15-preview",
+                "name": "[concat(parameters('name'), '/', 'Public Repo')]",
+                "type": "Microsoft.DevTestLab/labs/artifactSources",
+                "location": "[resourceGroup().location]",
+                
+                "dependsOn": [
+                        "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+                    ],
+                "properties": {
+                    "displayName": "Public Artifact Repo",
+                    "status": "Disabled"
+                    }
+                }
+               
+            ]
+        },
+        {
+            "type": "Microsoft.KeyVault/vaults",
+            "apiVersion": "2016-10-01",
+            "name": "[parameters('vaultname')]",
+            "location": "westeurope",
+            "dependsOn": [
+                    "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+                ],
+            "properties": {
+                "sku": {
+                    "family": "A",
+                    "name": "Standard"
+                },
+                "tenantId": "72f988bf-86f1-41af-91ab-2d7cd011db47",
+                "accessPolicies": [
+                    {
+                        "tenantId": "72f988bf-86f1-41af-91ab-2d7cd011db47",
+                        "objectId": "27790a78-69b8-4542-94e9-38d71df9a5f9",
+                        "permissions": {
+                            "keys": [],
+                            "secrets": [
+                                "Get",
+                                "List",
+                                "Set",
+                                "Delete",
+                                "Recover",
+                                "Backup",
+                                "Restore"
+                            ],
+                            "certificates": []
+                        }
+                    },
+                    {
+                        "tenantId": "72f988bf-86f1-41af-91ab-2d7cd011db47",
+                        "objectId": "49c9b64d-6d4c-4da0-a501-a0d701e1fdf4",
+                        "permissions": {
+                            "keys": [
+                                "Get",
+                                "List",
+                                "Update",
+                                "Create",
+                                "Import",
+                                "Delete",
+                                "Recover",
+                                "Backup",
+                                "Restore"
+                            ],
+                            "secrets": [
+                                "Get",
+                                "List",
+                                "Set",
+                                "Delete",
+                                "Recover",
+                                "Backup",
+                                "Restore"
+                            ],
+                            "certificates": [
+                                "Get",
+                                "List",
+                                "Update",
+                                "Create",
+                                "Import",
+                                "Delete",
+                                "Recover",
+                                "Backup",
+                                "Restore",
+                                "ManageContacts",
+                                "ManageIssuers",
+                                "GetIssuers",
+                                "ListIssuers",
+                                "SetIssuers",
+                                "DeleteIssuers"
+                            ]
+                        }
+                    }
+                ],
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": false,
+                "enableSoftDelete": true
+            }
+        },
+        {
+            "type": "microsoft.devtestlab/labs/artifactsources",
+            "apiVersion": "2018-09-15",
+            "name": "[concat(parameters('name'), '/privaterepo')]",
+            "dependsOn": [
+                "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+            ],
+            "properties": {
+                "displayName": "DevTestLab",
+                "uri": "[parameters('DevTestLabRepo')]",
+                "sourceType": "VsoGit",
+                "folderPath": "[parameters('ArtifactsfolderPath')]",
+                "armTemplateFolderPath": "[parameters('ArmTemplatefolderPath')]",
+                "branchRef": "master",
+                "status": "Enabled",
+                "securityToken":"vc6blbhvtmezewggo5xtlguzovxxymcbmlwsx5ypgcnpuscjtb5a"
+            }
+        },
+        {
+            "type": "Microsoft.KeyVault/vaults/secrets",
+            "apiVersion": "2016-10-01",
+            "name": "[concat(parameters('vaultname'), '/adminlocal')]",
+            "location": "westeurope",
+            "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('vaultname'))]",
+                "[resourceId('microsoft.devtestlab/labs', parameters('name'))]"
+            ],
+            "properties": {
+                "value" :"Test",
+                "attributes": {
+                    "enabled": true
+                }
+            }
+        }
+    ]
+}

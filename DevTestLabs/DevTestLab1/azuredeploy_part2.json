@@ -1,0 +1,87 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "name": {
+            "defaultValue": "",
+            "type": "String"
+        },
+        "vaultname": {
+            "defaultValue": "",
+            "type": "String"
+        },
+        "DevTestLabRepo": {
+            "defaultValue": "https://dev.azure.com/hemotzku/_git/Beiersdorf_DevTestLab",
+            "type": "String",
+            "metadata": {
+                "description": "Url des externen Repos für dieses DTL"
+            }
+        },
+        "ArtifactsfolderPath": {
+            "defaultValue": "/DevTestLab1/Artifacts",
+            "type": "string",
+            "metadata": {
+                "description":"Folder der Artifacts im Repo "
+            }
+
+        },
+        "ArmTemplatefolderPath": {
+            "defaultValue": "/DevTestLab1/ArmTemplates",
+            "type": "string",
+            "metadata": {
+                "description":"Folder der ARM Templates im Repo "
+            }
+        },
+        "VNETaddressspace": {
+            "defaultValue": "10.36.18.0/24",
+            "type": "string",
+            "metadata": {
+                "description":"Address space of the VNET "
+            }
+        },
+        "Subnetaddressspace": {
+            "defaultValue": "10.36.18.0/24",
+            "type": "string",
+            "metadata": {
+                "description":"Address space of the subnet for VMs"
+            }
+        }
+    },
+    "resources": [
+        {
+            "type": "Microsoft.DevTestLab/labs",
+            "apiVersion": "2018-10-15-preview",
+            "name": "[parameters('name')]",
+            "location": "[resourceGroup().location]",
+            "tags": {},
+            "dependsOn" :[
+            ],  
+            "properties": {
+                "labStorageType": "Premium",
+                "mandatoryArtifactsResourceIdsLinux": [
+                ],
+                "mandatoryArtifactsResourceIdsWindows": [
+                    "[concat(resourceId('microsoft.devtestlab/labs/artifactsources', parameters('name'),'privaterepo'), '/artifacts/RegisterDNS')]",
+                    "[concat(resourceId('microsoft.devtestlab/labs/artifactsources', parameters('name'),'privaterepo'), '/artifacts/Regeditwithoutparam')]",
+                    "[concat(resourceId('microsoft.devtestlab/labs/artifactsources', parameters('name'),'privaterepo'), '/artifacts/JoinDomainwithoutparam')]",
+                    "[concat(resourceId('microsoft.devtestlab/labs/artifactsources', parameters('name'),'privaterepo'), '/artifacts/InstallMSIwithoutparam')]"
+                ],
+                "premiumDataDisks": "",
+                "environmentPermission": "",
+                "announcement": {
+                    "title": "Hallo Welt",
+                    "markdown": "<h1>Hallo Welt</h1>",
+                    "enabled": true,
+                    "expirationDate": "",
+                    "expired": false
+                },
+                "support": {
+                    "enabled": true,
+                    "markdown": "<h1>Support</h1>"
+                },
+                "extendedProperties": {}
+            },
+            "resources": []
+        }
+    ]
+}
