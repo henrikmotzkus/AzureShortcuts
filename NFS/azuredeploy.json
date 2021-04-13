@@ -46,7 +46,7 @@
         }
     },
     "variables": {
-        "_artifactsLocation":"https://raw.githubusercontent.com/henrikmotzkus/AzureShortcuts/main/",
+        "_artifactsLocation":"https://raw.githubusercontent.com/henrikmotzkus/AzureShortcuts/main/NFS/",
         "vnetId": "[parameters('virtualNetworkId')]",
         "subnetRef": "[concat(variables('vnetId'), '/subnets/', parameters('subnetName'))]",
         "customData": "[concat('#include\n',uri(variables('_artifactsLocation'),'Linux-Disk-Setup.yaml'))]"
