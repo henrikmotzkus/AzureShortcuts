@@ -1,0 +1,173 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "sqlpassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "sqladminuser": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "IP": {
+            "type": "securestring",
+            "metadata": {
+                "description": "description"
+            }
+        }
+    
+    },
+    "functions": [],
+    "variables": {
+        "storageaccountname": "[toLower(uniqueString(resourceGroup().id))]",
+        "sqlservername" : "[toLower(uniqueString(resourceGroup().id))]",
+        "sqldbname" : "[toLower(uniqueString(resourceGroup().id))]",
+        "automationaccountname": "[toLower(uniqueString(resourceGroup().id))]"    
+    },
+    "resources": [{
+        "name": "[variables('storageaccountname')]",
+        "type": "Microsoft.Storage/storageAccounts",
+        "apiVersion": "2019-06-01",
+        "tags": {
+            "displayName": "storageaccount1"
+        },
+        "location": "[resourceGroup().location]",
+        "kind": "StorageV2",
+        "sku": {
+            "name": "Premium_LRS",
+            "tier": "Premium"
+        }
+    },
+    {
+        "name": "[variables('sqlservername')]",
+        "type": "Microsoft.Sql/servers",
+        "apiVersion": "2014-04-01",
+        "location": "[resourceGroup().location]",
+        "tags": {
+            "displayName": "[variables('sqlservername')]"
+        },
+        "properties": {
+            "administratorLogin": "[parameters('sqladminuser')]",
+            "administratorLoginPassword": "[parameters('sqlpassword')]"
+        },
+        "resources": [
+            {
+                "type": "firewallRules",
+                "apiVersion": "2014-04-01",
+                "dependsOn": [
+                    "[resourceId('Microsoft.Sql/servers', variables('sqlservername'))]"
+                ],
+                "location": "[resourceGroup().location]",
+                "name": "AllowAllWindowsAzureIps",
+                "properties": {
+                    "startIpAddress": "0.0.0.0",
+                    "endIpAddress": "0.0.0.0"
+                }
+            }, 
+            {
+                "type": "Microsoft.Sql/servers/firewallRules",
+                "apiVersion": "2015-05-01-preview",
+                "name": "[concat(variables('sqlservername'), '/ip')]",
+                "dependsOn": [
+                    "[resourceId('Microsoft.Sql/servers', variables('sqlservername'))]"
+                ],
+                "properties": {
+                    "startIpAddress": "[parameters('IP')]",
+                    "endIpAddress": "[parameters('IP')]"
+                }
+            },
+            {
+                "type": "databases",
+                "apiVersion": "2020-08-01-preview",
+                "name": "[variables('sqldbname')]",
+                "location": "[resourceGroup().location]",
+                "sku": {
+                    "name": "Standard",
+                    "tier": "Standard"
+                },
+                "dependsOn": [
+                    "[resourceId('Microsoft.Sql/servers', concat(variables('sqlservername')))]"
+                ]
+            }
+        ]
+    }, 
+    {
+        "name": "[variables('automationaccountname')]",
+        "type": "Microsoft.Automation/automationAccounts",
+        "apiVersion": "2015-10-31",
+        "location": "[resourceGroup().location]",
+        "tags": {
+        },
+        "properties": {
+            "sku": {
+                "name": "Free"
+            }
+        },
+        "resources":[
+            
+        ]
+    },
+    {
+            "type": "Microsoft.Automation/automationAccounts/credentials",
+            "apiVersion": "2015-10-31",
+            "name": "[concat(variables('automationaccountname'),'/sqldb')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', variables('automationaccountname'))]"
+            ],
+            "properties": {
+                "userName": "[parameters('sqladminuser')]",
+                "password": "[parameters('sqlpassword')]"
+            }
+    },
+    {
+            "type": "Microsoft.Automation/automationAccounts/variables",
+            "apiVersion": "2015-10-31",
+            "name": "[concat(variables('automationaccountname'),'/database')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', variables('automationaccountname'))]"
+            ],
+            "properties": {
+                "isEncrypted": false,
+                "value": "[concat('\"',variables('sqldbname'),'\"')]"
+            }
+    },
+    {
+            "type": "Microsoft.Automation/automationAccounts/variables",
+            "apiVersion": "2015-10-31",
+            "name": "[concat(variables('automationaccountname'),'/sqlservername')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', variables('automationaccountname'))]"
+            ],
+            "properties": {
+                "isEncrypted": false,
+                "value": "[concat('\"',variables('sqlservername'), '.database.windows.net','\"')]"
+            }
+    }
+ 
+    ],
+    "outputs": {
+        "storageaccountname": {
+            "type": "string",
+            "value": "[variables('storageaccountname')]"
+        },
+        "sqlservername": {
+            "type": "string",
+            "value": "[variables('sqlservername')]"
+        },
+        "sqldbname": {
+            "type": "string",
+            "value": "[variables('sqldbname')]"
+        },
+        "automationaccountname": {
+            "type": "string",
+            "value": "[variables('automationaccountname')]"
+        }
+        
+
+    }
+}
