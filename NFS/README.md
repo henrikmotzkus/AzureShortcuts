@@ -7,10 +7,14 @@ This example deploys a Ubuntu 18 LTS to an existing VNET with an additional disk
 
 ## Sources
 
-Cloud-init documentation: https://cloudinit.readthedocs.io/en/18.5/topics/examples.html#
+Cloud-init documentation: https://cloudinit.readthedocs.io/en/18.5/topics/examples.html
+
 Inserting custom script into Linux: https://docs.microsoft.com/en-us/azure/virtual-machines/custom-data
+
 Another cloud scripting website: https://www.digitalocean.com/community/tutorials/an-introduction-to-cloud-config-scripting
-Quickstart template for custom data: https://github.com/Azure/azure-quickstart-templates/blob/master/101-vm-customdata/azuredeploy.json#
+
+Quickstart template for custom data: https://github.com/Azure/azure-quickstart-templates/blob/master/101-vm-customdata/azuredeploy.json
+
 
 
 ## How cloud-init based disk setup works
